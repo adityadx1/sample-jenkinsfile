@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+            stages {
+                stage ('gitclone') {
+                    steps {
+                        git branch: 'main', url: "https://github.com/adityadx1/springboot-demo.git"
+                    }
+                }
+
+                stage ('build') {
+                    steps {
+                        withMaven(jdk: 'local_jdk', maven: 'maven')  {
+                            sh "mvn compile"
+                        }
+                    }
+                }
+
+                stage ('package') {
+                    steps {
+                        withMaven(jdk: 'local_jdk', maven: 'maven')  {
+                            sh 'mvn clean package'
+                        }
+                    }
+                }
+                
+                stage ('acceptance test') {
+                    steps {
+                        withMaven(jdk: 'local_jdk', maven: 'maven')  {
+                            sh 'nohup ./mvnw spring-boot:run &'
+                            sh 'mkdir -p seleniumTest'
+                            dir('seleniumTest') {
+                                git branch: 'main', url: 'https://github.com/adityadx1/seleniumDemoTest.git'
+                                sh 'mvn clean test'
+                            }
+                        }
+                    }
+                }
+                    
+                stage("Cleanup") {
+                    steps{
+	                       sh "pid=\$(lsof -i:8080 -t); kill -TERM \$pid || kill -KILL \$pid"
+	               }
+                }
+            }
+        }
